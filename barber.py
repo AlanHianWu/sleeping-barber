@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import threading, random, time, sys
+import threading, random, time, queue
 
 # n times barbers
 # each barber has one chair that they use when cutting hair
@@ -11,14 +11,13 @@ import threading, random, time, sys
 # Note that this problem is based on events. For example, an event happens when a customer enters the shop, and again when s(he) is finished having their hair cut.
 
 class waitingRoom():
-    customers = []
     barber = []
-    queue = []
+    queue = queue.Queue()
     threads = []
     count = 0
     missed = 0
     lock = threading.Lock()
-    event = threading.event()
+    lock2 = threading.Lock()
     def __init__(self, chairs=1, barbers=1, names=[]):
         if isinstance(chairs, int) and isinstance(barbers, int):
             self.chairs = chairs
@@ -29,27 +28,28 @@ class waitingRoom():
     def add(self, arg):
         self.count += 1
         if self.chairs != 0:
-            # before all that check if there is a barber free
-            for i in self.barber:
-                if i.sleep():
-                    i.wake()
-                    t = threading.Thread(target=i.hairCut, args=(self.lock, arg,))
-                    self.threads.append(t)
-                    t.start()
-                    return
-            self.customers.append(arg)
-            self.chairs -= 1
-            self.queue = self.customers[::-1]
+            with self.lock:
+                for i in self.barber:
+                    if i.sleep():
+                        i.wake()
+                        thread = threading.Thread(target=i.hairCut, args=(arg,))
+                        self.threads.append(thread)
+                        print(self.threads)
+                        thread.start()
+                        return
+                self.chairs -= 1
+                self.queue.put(arg)
         else:
             self.missed += 1
 
     def next(self):
-        if len(self.queue) == 0:
-            return None
-        else:
+        with self.lock2:
             self.chairs += 1
-            return self.queue.pop()
+            return self.queue.get()
     
+    def hasNext(self):
+        return self.queue.empty()
+
     def join(self):
         for t in self.threads:
             t.join()
@@ -59,66 +59,56 @@ class waitingRoom():
         print("barbers   = ", len(self.barber))
         print("customers = ", self.count)
         print("missed    = ", self.missed)
-        print("queue     = ", len(self.queue))
+        print("queue     = ", self.queue.qsize())
         c = 0
         for j in (self.barber):
-            if j.sleep():
+            if not j.sleep():
                 c += 1
         print("Sleeping  = ", c)
         print("chairs    = ", self.chairs)
         print("====================\n")
-
 
 # customer class, require the name and time need to do the hair cut of the customer
 class Customer():
     def __init__(self, time, name=None):
         self.name = name
         self.time = time
-    
+
     def time(self):
         return self.time
-    
+
     def name(self):
         return self.name
 
 class Barber():
-    s = True
+    event = threading.Event()
     def __init__(self, shop, name=""):
         self.name = name
         self.shop = shop
-    
+  
     def sleep(self):
-        return self.s
+        return not self.event.isSet()
     
     def wake(self):
-        self.s = False
-    
-    def hairCut(self, lock, arg):
-        lock.acquire()
-        try:
-            if self.s is False:
-                time.sleep(arg.time)
-                while True:
-                    look = self.shop.next()
-                    if look != None:
-                        time.sleep(look.time)
-                        self.shop.status()
-                    else:
-                        self.s = True
-                        self.shop.status()
-                        break
-        finally:
-            lock.release()
+        self.event.set()
+
+    def hairCut(self, arg):
+        if self.event.isSet():
+            time.sleep(arg.time)
+            while not self.shop.hasNext():
+                self.shop.status()
+                c = self.shop.next()
+                time.sleep(self.shop.next().time)
+            self.event.clear()
 
 if __name__ == "__main__":
     names = ["alan", "tom", "jeff", "gary", "chris", "stev", "donal", "alex", "josh", "jack", "may", "tuff", "bob", "henry", "gluss", "rick", "mick", "rob"]
     customers = []
-
-    for i in range(100):
-        i = Customer(random.randint(1,5), names[random.randint(0,len(names) - 1)] + str(i))
+    for i in range(20):
+        i = Customer(random.randint(1,4), names[random.randint(0,len(names) - 1)] + str(i))
         customers.append(i)
 
-    shop = waitingRoom(5, 4, names)
+    shop = waitingRoom(10, 4, names)
 
     for i in range(len(customers)):
         start_time = time.time()
@@ -126,7 +116,9 @@ if __name__ == "__main__":
         time.sleep(t)
         shop.add(customers[i])
         shop.status()
+    print("joining")
     shop.join()
+    print("after join")
     shop.status()
 
     print("--- %s seconds ---" % (time.time() - start_time))
