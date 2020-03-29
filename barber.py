@@ -32,7 +32,7 @@ class waitingRoom():
                 for i in self.barber:
                     if i.sleep():
                         i.wake()
-                        thread = threading.Thread(target=i.hairCut, args=(arg,))
+                        thread = threading.Thread(target=i.hairCut, args=(arg,), daemon=True)
                         self.threads.append(thread)
                         print(self.threads)
                         thread.start()
@@ -96,6 +96,7 @@ class Barber():
         if self.event.isSet():
             time.sleep(arg.time)
             while not self.shop.hasNext():
+                print(self.shop.threads)
                 self.shop.status()
                 c = self.shop.next()
                 time.sleep(self.shop.next().time)
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     names = ["alan", "tom", "jeff", "gary", "chris", "stev", "donal", "alex", "josh", "jack", "may", "tuff", "bob", "henry", "gluss", "rick", "mick", "rob"]
     customers = []
     for i in range(20):
-        i = Customer(random.randint(1,4), names[random.randint(0,len(names) - 1)] + str(i))
+        i = Customer(random.randint(2,5), names[random.randint(0,len(names) - 1)] + str(i))
         customers.append(i)
 
     shop = waitingRoom(10, 4, names)
