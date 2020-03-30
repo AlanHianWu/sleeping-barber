@@ -1,4 +1,13 @@
+how i tested the code:
+    At first just runing the code in the terminal, after some research i can use the threading.enumerate() to see all threads, i just used that
+    to see if threads are created or not. Other then it was just alot of print statements with threading,Currentthread to see what was going on.
 
+main problems:
+    I ran into, had to make sure events and conditions are shared the same across all instances, and shop.close().
+    makeing sure that all the barbers go home was a bit of a fuss, since when every i notify all the barbers, the working barbers will not recieve the notify
+    and go back to sleep, or the other way around since i was only using one if statement to check if it was time to go home,
+    solved the problem by using two if statments, one right after working on a customer to see if the home event flag is set and one if statement
+    for when ever a barber wakes up.
 
 logs:
     these logs are written after i have some 100 lines of code written down and have it working 80 percent ish.

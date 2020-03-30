@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import threading, random, time, queue
 
-barber, customers, chairs, busy = 10, 50, 10, 0
+# varibles declared here, you can specify the amouth of barbers, customers, chairs and how busy it will be
+# note the the busy varible determines the rate at wich the customers come in. 0 for when they all come in at once
+barber, customers, chairs, busy = 10, 50, 15, 0
+
+# the queue is set with maxsize at barber + chairs, at minium all the barbers at have their own chairs
 queue = queue.Queue(maxsize=barber + chairs)
 
 class Barber(threading.Thread):
@@ -88,6 +92,7 @@ class Shop(threading.Thread):
 def main():
     shop = Shop(barber, customers, busy)
     shop.open()
+    # this time.sleep() gives time for the shop to be open before closing, kind of like opening hours
     time.sleep(2)
     shop.close()
 
